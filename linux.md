@@ -8,7 +8,7 @@
 
    关键目录：
 
-   ​	bin、usr/bin：系统的可执行文件，可以在任意目录下执行
+   ​	bin->usr/bin：系统的可执行文件，可以在任意目录下执行
 
    ​	usr/local/bin：存放用户自己的可执行文件，也可以在任意目录下执行
 
@@ -367,3 +367,234 @@
 ​			这样三种权限就可以压缩成三个数字，那么`chmod 644 testPremission`就会将权限状态变为 `rw-r--r--`
 
 ## 网络配置
+
+​	配置静态ip：
+
+​			打开文件`/etc/sysconfig/network-scripts/ifcfg-ens33` ,
+
+​				修改 `BOOTPROTO="static"`,
+
+​				添加：    
+
+```
+IPADDR=192.168.6.128
+GATEWAY=192.168.6.2
+DNS1=192.168.6.2
+```
+
+​				分别为：IP地址、网关、DNS服务器，根据具体情况修改
+
+​				最后重启网络服务(`service network restart`)或者重启linux(`reboot`)即可
+
+## 进程管理
+
+一个进程会占用一个端口
+
+进程是操作系统中资源分配的基本单位，而线程是操作系统中调度的基本单位。
+
+#### 查看进程
+
+​	`ps` : 查看应用进程
+
+​	`ps -e`: 查看所有进程
+
+​	`ps -ef`：以全格式的形式显示进程
+
+​	`ps -a`：显示当前终端下的所有进程信息
+
+​	`ps -u`：以用户的格式显示进程信息
+
+​	`ps -x`：显示后台进程运行的参数
+
+各列的含义：
+
+  	UID：进程所有者的用户ID。
+  	PID：进程ID，是系统中进程的唯一标识符。
+  	PPID：父进程ID，指向创建该进程的父进程的ID。
+  	C：进程的CPU占用率。
+  	STIME：进程启动时间。
+  	TTY：进程所在的终端设备。
+  	TIME：进程已经占用的CPU时间。
+  	CMD：进程的命令行。
+#### 结束进程：
+
+​		`kill <pid>`
+
+​		`killall <pid> (支持通配符)`
+
+​	如果进程CMD为bash，则为终端进程，需要添加 -9参数
+
+​		例如：`kill -9 3367`
+
+​		添加了-9参数则是强制终止进程
+
+#### 服务管理
+
+1. linux服务是是一种后台运行的程序或进程，它们可以在系统启动时自动启动，并在系统运行期间一直运行。服务通常用于提供某种功能或服务，它是一种守护进程。
+2. 操作服务：`systemctl [start|stop|restart|reload|status|enable|disable] <service>` 
+
+​		示例：
+
+​			查看防火墙运行状态：`systemctl status firewalld`
+
+​			设置防火墙开机自启动：`systemctl enable firewalld`
+
+​			开启防火墙：`system start firewalld`
+
+​	有些版本采用命令：`service <serviceName> [start|stop|restart|reload|status|enable|disable]`
+
+## 软件包管理
+
+软件包（Package）通常指的是一个软件的打包文件，它可以包含软件的源代码、二进制文件、配置文件、文档等信息。在Linux系统中，软件包通常是以源代码或二进制文件的形式提供的，用户需要使用软件包管理工具来管理和安装软件。
+
+#### RPM包管理
+
+查看当前系统已经安装了的软件包：`rpm -qa <rpmPackageName>`
+
+卸载软件包及其对应下载的程序：`rpm -e <rpmPackageName>`
+
+安装rpm：`rpm -ivh <package_name>.rpm`
+
+​				选项说明：
+
+​					`-i=install` 安装
+
+​					`-v=verbose` 提示
+
+​					`-h=hash` 进度条
+
+#### YUM包管理
+
+YUM是基于RPM包的软件包管理工具，它能从指定服务器上自动下载RPM包并且自动安装，可以自动处理软件包之间的依赖关系。
+
+​	列出rpm安装包：`yum list` 
+
+​								`yum list installed` （列出已安装的）
+
+​	安装：`yum install <name>`
+
+​	卸载：`yum remove <name>`
+
+## 搭建JavaEE环境
+
+#### 安装JDK
+
+使用Xftp传递jdk的tar压缩包到/opt目录下
+
+使用tar -zxvf jdk-8u121-linux-x64.tar.gz -C /opt解压
+
+配置环境变量：在/etc/profile文件下，在其中添加环境变量并导出
+
+```
+JAVA_HOME=/opt/jdk1.8.0_121
+PATH=$PATH:$JAVA_HOME/bin
+CLASSPATH=$JAVA_HOME/lib:.
+export JAVAHOME PATH CLASSPATH
+```
+
+最后 `source profile` 就可以使配置生效
+
+#### 安装tomcat
+
+使用Xftp传递tomcat的tar压缩包，然后解压即可。
+
+#### 安装mysql
+
+1. 先检查是否安装了mariadb数据库，是mysql的分支数据库，和mysql会冲突，安装之间需要卸载。
+
+​		使用命令：`yum list installed |grep mariadb`
+
+2. 使用命令进行卸载（-y参数是无需确认）：`yum -y remove mariadb-libs.x86_64` 
+
+3. 然后将mysql压缩包传输到/opt目录下并解压
+
+4. 可以选择将mysql重命名
+
+5. 在mysql目录下创建data目录
+
+`mkdir /opt/mysql-5.7.18/data`
+
+6. 创建linux用户组mysql和用户mysql用于执行mysqld命令
+
+```
+groupadd mysql
+useradd -g mysql mysql
+```
+
+7. 进行mysql初始化
+
+切换到bin目录下，执行命令
+
+`./mysqld --initialize --user=mysql --datadir=/opt/mysql-5.7.18/data --basedir=/opt/mysql-5.7.18`
+
+​	会生成初始密码，先拷贝下来d62/WmQnYXQs
+
+8. 启用加密机制
+
+​	在服务器与客户机之间来回传输的所有数据进行加密。通过证书提供了身份验证机制，mysql命令程序mysql_ssl_rsa_setup提供了开启数据加密功能，生成数字证书。
+
+​	在bin目录下执行命令 `./mysql_ssl_rsa_setup --datadir=/opt/mysql-5.7.18/data`
+
+9. 修改mysql目录权限
+
+​	`chown mysql:mysql mysql-5.7.18/`
+
+​	还可以让所有用户都有读写执行三种权限：`chmod 777 mysql-5.7.18/`
+
+10. 启动mysql服务
+
+​	`./mysqld_safe&` ：加&是在后台启动，不加则会占用一个shell
+
+​	确认是否启动：`ps -ef|grep mysql`
+
+11. 客户端登录mysql
+
+​	在bin目录下  `./mysql -uroot -p<password>`
+
+12.  修改密码
+
+    `alter user 'root'@'localhost' identified by '1234';`
+
+13. 授权远程访问mysql
+
+    授权远程访问，在没有授权之前只能在本机访问msyql，远程授权就是让其他计算机通过网络访问mysql。
+
+    语法：`grant all privileges on *.* to root@'%' identified by '1234';`
+
+​			参数：
+
+​				其中*.* 的第一个*表示所有数据库名，第二个*表示所有的数据库表；
+
+​				root@'%' 中的root表示用户名，%是通配符，表示任意ip地址。
+
+​		然后使用 `flush privileges;`刷新权限，并且关闭防火墙：`systemctl stop firewalld;`
+
+14. 关闭mysql服务
+
+    在bin目录下输入 `./mysqladmin -uroot -p shutdown`， 并输入密码关闭服务。
+
+15. 修改数据库编码(不常用)
+
+​		查看数据库编码：show variables where Variable_name like '%char%';
+
+​		修改mysql的字符集：在mysql客户端执行如下命令
+
+```
+set character_set_client=utf8;
+set character_set_connection=utf8;
+set character_set_database=utf8;
+set character_set_results=utf8;
+set character_set_server=utf8;
+set character_set_system=utf8;
+set collation_connection=utf8;
+set collation_database=utf8;
+set collation_server=utf8;
+```
+
+
+
+ 
+
+ 
+
+ 
